@@ -8,9 +8,9 @@ import csv
 import pickle
 import os
 
-tf.flags.DEFINE_string("valid_data", "../data/music/music_valid.csv", " Data for validation")
-tf.flags.DEFINE_string("test_data", "../data/music/music_test.csv", "Data for testing")
-tf.flags.DEFINE_string("train_data", "../data/music/music_train.csv", "Data for training")
+tf.flags.DEFINE_string("valid_data", "../data/music/valid.csv", " Data for validation")
+tf.flags.DEFINE_string("test_data", "../data/music/test.csv", "Data for testing")
+tf.flags.DEFINE_string("train_data", "../data/music/train.csv", "Data for training")
 tf.flags.DEFINE_string("user_review", "../data/music/user_review", "User's reviews")
 tf.flags.DEFINE_string("item_review", "../data/music/item_review", "Item's reviews")
 tf.flags.DEFINE_string("user_review_id", "../data/music/user_rid", "user_review_id")
@@ -211,11 +211,7 @@ def load_data_and_labels(train_data, valid_data, user_review, item_review, user_
         if u_text.has_key(int(line[0])):
             reid_user_train.append(u_rid[int(line[0])])
         else:
-            u_text[int(line[0])] = []
-            for s in user_reviews[int(line[0])]:
-                s1 = clean_str(s)
-                s1 = s1.split(" ")
-                u_text[int(line[0])].append(s1)
+            u_text[int(line[0])] = user_reviews[int(line[0])]
             u_rid[int(line[0])] = []
             for s in user_rids[int(line[0])]:
                 u_rid[int(line[0])].append(int(s))
@@ -224,12 +220,7 @@ def load_data_and_labels(train_data, valid_data, user_review, item_review, user_
         if i_text.has_key(int(line[1])):
             reid_item_train.append(i_rid[int(line[1])])  #####write here
         else:
-            i_text[int(line[1])] = []
-            for s in item_reviews[int(line[1])]:
-                s1 = clean_str(s)
-                s1 = s1.split(" ")
-
-                i_text[int(line[1])].append(s1)
+            i_text[int(line[1])] = item_reviews[int(line[1])]
             i_rid[int(line[1])] = []
             for s in item_rids[int(line[1])]:
                 i_rid[int(line[1])].append(int(s))
@@ -323,9 +314,9 @@ if __name__ == '__main__':
         zip(userid_train, itemid_train, reid_user_train, reid_item_train, y_train))
     batches_test = list(zip(userid_valid, itemid_valid, reid_user_valid, reid_item_valid, y_valid))
     print 'write begin'
-    output = open(os.path.join(TPS_DIR, 'music.train'), 'wb')
+    output = open(os.path.join(TPS_DIR, 'video.train'), 'wb')
     pickle.dump(batches_train, output)
-    output = open(os.path.join(TPS_DIR, 'music.test'), 'wb')
+    output = open(os.path.join(TPS_DIR, 'video.test'), 'wb')
     pickle.dump(batches_test, output)
 
     para = {}
@@ -341,7 +332,7 @@ if __name__ == '__main__':
     para['test_length'] = len(y_valid)
     para['u_text'] = u_text
     para['i_text'] = i_text
-    output = open(os.path.join(TPS_DIR, 'music.para'), 'wb')
+    output = open(os.path.join(TPS_DIR, 'video.para'), 'wb')
 
     # Pickle dictionary using protocol 0.
     pickle.dump(para, output)

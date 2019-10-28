@@ -16,9 +16,9 @@ import datetime
 import NARRE
 
 tf.flags.DEFINE_string("word2vec", "../data/google.bin", "Word2vec file with pre-trained embeddings (default: None)")
-tf.flags.DEFINE_string("valid_data","../data/music/music.test", " Data for validation")
-tf.flags.DEFINE_string("para_data", "../data/music/music.para", "Data parameters")
-tf.flags.DEFINE_string("train_data", "../data/music/music.train", "Data for training")
+tf.flags.DEFINE_string("valid_data","../data/music/video.test", " Data for validation")
+tf.flags.DEFINE_string("para_data", "../data/music/video.para", "Data parameters")
+tf.flags.DEFINE_string("train_data", "../data/music/video.train", "Data for training")
 # ==================================================
 
 # Model Hyperparameters
