@@ -13,10 +13,24 @@ import json
 import pandas as pd
 import pickle
 import numpy as np
-TPS_DIR = '../data/music'
-TP_file = os.path.join(TPS_DIR, 'amazon_instant_video_train.json')
-TP_file_test = os.path.join(TPS_DIR, 'amazon_instant_video_test.json' )
-TP_file_valid = os.path.join(TPS_DIR, 'amazon_instant_video_dev.json')
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--train-path', '-train', type=str)
+parser.add_argument('--test-path', '-test', type=str)
+parser.add_argument('--valid-path', '-valid', type=str)
+parser.add_argument('--dir', '-dir', type=str)
+args = parser.parse_args()
+print(args)
+TPS_DIR=args.dir
+TP_file=args.train_path
+TP_file_test=args.test_path
+TP_file_valid=args.valid_path
+
+#TPS_DIR = '../data/music'
+#TP_file = os.path.join(TPS_DIR, 'amazon_instant_video_train.json')
+#TP_file_test = os.path.join(TPS_DIR, 'amazon_instant_video_test.json' )
+#TP_file_valid = os.path.join(TPS_DIR, 'amazon_instant_video_dev.json')
 
 f = open(TP_file)
 f_test = open(TP_file_test)

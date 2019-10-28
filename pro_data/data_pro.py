@@ -8,13 +8,14 @@ import csv
 import pickle
 import os
 
-tf.flags.DEFINE_string("valid_data", "../data/music/valid.csv", " Data for validation")
-tf.flags.DEFINE_string("test_data", "../data/music/test.csv", "Data for testing")
-tf.flags.DEFINE_string("train_data", "../data/music/train.csv", "Data for training")
-tf.flags.DEFINE_string("user_review", "../data/music/user_review", "User's reviews")
-tf.flags.DEFINE_string("item_review", "../data/music/item_review", "Item's reviews")
-tf.flags.DEFINE_string("user_review_id", "../data/music/user_rid", "user_review_id")
-tf.flags.DEFINE_string("item_review_id", "../data/music/item_rid", "item_review_id")
+tf.flags.DEFINE_string("dir", "../data/music/", "Main dir")
+tf.flags.DEFINE_string("valid_data", "valid.csv", " Data for validation")
+tf.flags.DEFINE_string("test_data", "test.csv", "Data for testing")
+tf.flags.DEFINE_string("train_data", "train.csv", "Data for training")
+tf.flags.DEFINE_string("user_review", "user_review", "User's reviews")
+tf.flags.DEFINE_string("item_review", "item_review", "Item's reviews")
+tf.flags.DEFINE_string("user_review_id", "user_rid", "user_review_id")
+tf.flags.DEFINE_string("item_review_id", "item_rid", "item_review_id")
 tf.flags.DEFINE_string("stopwords", "../data/stopwords", "stopwords")
 
 
@@ -283,15 +284,17 @@ def load_data_and_labels(train_data, valid_data, user_review, item_review, user_
 
 
 if __name__ == '__main__':
-    TPS_DIR = '../data/music'
+    #TPS_DIR = '../data/music'
     FLAGS = tf.flags.FLAGS
-    FLAGS._parse_flags()
+    import sys
+    FLAGS(sys.argv)
+    #FLAGS.parse_flags()
 
     u_text, i_text, y_train, y_valid, vocabulary_user, vocabulary_inv_user, vocabulary_item, \
     vocabulary_inv_item, uid_train, iid_train, uid_valid, iid_valid, user_num, item_num, reid_user_train, reid_item_train, reid_user_valid, reid_item_valid = \
-        load_data(FLAGS.train_data, FLAGS.valid_data, FLAGS.user_review, FLAGS.item_review, FLAGS.user_review_id,
-                  FLAGS.item_review_id, FLAGS.stopwords)
-
+        load_data(FLAGS.dir+FLAGS.train_data, FLAGS.dir+FLAGS.valid_data, FLAGS.dir+FLAGS.user_review, FLAGS.dir+FLAGS.item_review, FLAGS.dir+FLAGS.user_review_id,
+                  FLAGS.dir+FLAGS.item_review_id, FLAGS.dir+FLAGS.stopwords)
+    TPS_DIR=FLAGS.dir
     np.random.seed(2017)
 
     shuffle_indices = np.random.permutation(np.arange(len(y_train)))
@@ -314,9 +317,9 @@ if __name__ == '__main__':
         zip(userid_train, itemid_train, reid_user_train, reid_item_train, y_train))
     batches_test = list(zip(userid_valid, itemid_valid, reid_user_valid, reid_item_valid, y_valid))
     print 'write begin'
-    output = open(os.path.join(TPS_DIR, 'video.train'), 'wb')
+    output = open(os.path.join(TPS_DIR, 'data.train'), 'wb')
     pickle.dump(batches_train, output)
-    output = open(os.path.join(TPS_DIR, 'video.test'), 'wb')
+    output = open(os.path.join(TPS_DIR, 'data.test'), 'wb')
     pickle.dump(batches_test, output)
 
     para = {}
@@ -332,7 +335,7 @@ if __name__ == '__main__':
     para['test_length'] = len(y_valid)
     para['u_text'] = u_text
     para['i_text'] = i_text
-    output = open(os.path.join(TPS_DIR, 'video.para'), 'wb')
+    output = open(os.path.join(TPS_DIR, 'data.para'), 'wb')
 
     # Pickle dictionary using protocol 0.
     pickle.dump(para, output)

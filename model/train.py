@@ -15,10 +15,11 @@ import pickle
 import datetime
 import NARRE
 
+#tf.flags.DEFINE_string("dir","../data/music/", "Directory")
 tf.flags.DEFINE_string("word2vec", "../data/google.bin", "Word2vec file with pre-trained embeddings (default: None)")
-tf.flags.DEFINE_string("valid_data","../data/music/video.test", " Data for validation")
-tf.flags.DEFINE_string("para_data", "../data/music/video.para", "Data parameters")
-tf.flags.DEFINE_string("train_data", "../data/music/video.train", "Data for training")
+tf.flags.DEFINE_string("valid_data","data.test", " Data for validation")
+tf.flags.DEFINE_string("para_data", "data.para", "Data parameters")
+tf.flags.DEFINE_string("train_data", "data.train", "Data for training")
 # ==================================================
 
 # Model Hyperparameters
@@ -87,6 +88,8 @@ def dev_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch, writer=None):
 if __name__ == '__main__':
     FLAGS = tf.flags.FLAGS
     FLAGS._parse_flags()
+    #import sys
+    #FLAGS(sys.argv)
     print("\nParameters:")
     for attr, value in sorted(FLAGS.__flags.items()):
         print("{}={}".format(attr.upper(), value))

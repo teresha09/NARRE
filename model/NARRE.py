@@ -118,9 +118,22 @@ class NARRE(object):
             bau = tf.Variable(tf.constant(0.1, shape=[attention_size]), name="bau")
             bbu = tf.Variable(tf.constant(0.1, shape=[1]), name="bbu")
             self.iid_a = tf.nn.relu(tf.nn.embedding_lookup(iidW, self.input_reuid))
-            self.u_j = tf.einsum('ajk,kl->ajl', tf.nn.relu(
-                tf.einsum('ajk,kl->ajl', self.h_drop_u, Wau) + tf.einsum('ajk,kl->ajl', self.iid_a, Wru) + bau),
-                                             Wpu)+bbu  # None*u_len*1
+            #self.u_j = tf.einsum('ajk,kl->ajl', tf.nn.relu(
+            #    tf.einsum('ajk,kl->ajl', self.h_drop_u, Wau) + tf.einsum('ajk,kl->ajl', self.iid_a, Wru) + bau),
+            #                                 Wpu)+bbu  # None*u_len*1
+            #print self.h_drop_u.get_shape()
+            #print Wau.get_shape()
+
+            sm111=tf.reshape(self.h_drop_u, shape=[-1, num_filters_total])
+            #print num_filters_total
+            #print tf.shape(sm111)
+            sm11=tf.matmul(sm111, Wau)
+            sm1=tf.reshape(sm11,shape=[-1,review_num_u,attention_size])
+            sm2=tf.reshape(tf.matmul(tf.reshape(self.iid_a,shape=[-1,embedding_id]),Wru),shape=[-1,review_num_u,attention_size])
+            sm3=tf.nn.relu(sm1+sm2+bau)
+            #print tf.shape(sm3)
+            #print attention_size
+            self.u_j=tf.reshape(tf.matmul(tf.reshape(sm3,shape=[-1,attention_size]),Wpu),shape=[-1,review_num_u,1])+bbu
 
             self.u_a = tf.nn.softmax(self.u_j,1)  # none*u_len*1
 
@@ -135,9 +148,15 @@ class NARRE(object):
             bai = tf.Variable(tf.constant(0.1, shape=[attention_size]), name="bai")
             bbi = tf.Variable(tf.constant(0.1, shape=[1]), name="bbi")
             self.uid_a = tf.nn.relu(tf.nn.embedding_lookup(uidW, self.input_reiid))
-            self.i_j =tf.einsum('ajk,kl->ajl', tf.nn.relu(
-                tf.einsum('ajk,kl->ajl', self.h_drop_i, Wai) + tf.einsum('ajk,kl->ajl', self.uid_a, Wri) + bai),
-                                             Wpi)+bbi
+            #self.i_j =tf.einsum('ajk,kl->ajl', tf.nn.relu(
+            #    tf.einsum('ajk,kl->ajl', self.h_drop_i, Wai) + tf.einsum('ajk,kl->ajl', self.uid_a, Wri) + bai),
+            #                                 Wpi)+bbi
+            sm111=tf.reshape(self.h_drop_i, shape=[-1, num_filters_total])
+            sm11=tf.matmul(sm111, Wai)
+            sm1=tf.reshape(sm11,shape=[-1,review_num_i,attention_size])
+            sm2=tf.reshape(tf.matmul(tf.reshape(self.uid_a,shape=[-1,embedding_id]),Wri),shape=[-1,review_num_i,attention_size])
+            sm3=tf.nn.relu(sm1+sm2+bai)
+            self.i_j=tf.reshape(tf.matmul(tf.reshape(sm3,shape=[-1,attention_size]),Wpi),shape=[-1,review_num_i,1])+bbi
 
             self.i_a = tf.nn.softmax(self.i_j,1)  # none*len*1
 
