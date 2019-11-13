@@ -15,11 +15,11 @@ import pickle
 import datetime
 import NARRE
 
-#tf.flags.DEFINE_string("dir","../data/music/", "Directory")
+# tf.flags.DEFINE_string("dir","../data/music/", "Directory")
 tf.flags.DEFINE_string("word2vec", "../data/google.bin", "Word2vec file with pre-trained embeddings (default: None)")
-tf.flags.DEFINE_string("valid_data","data.test", " Data for validation")
-tf.flags.DEFINE_string("para_data", "data.para", "Data parameters")
-tf.flags.DEFINE_string("train_data", "data.train", "Data for training")
+tf.flags.DEFINE_string("valid_data", "../data/music/data.test", " Data for validation")
+tf.flags.DEFINE_string("para_data", "../data/music/data.para", "Data parameters")
+tf.flags.DEFINE_string("train_data", "../data/music/data.train", "Data for training")
 # ==================================================
 
 # Model Hyperparameters
@@ -37,7 +37,7 @@ tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device 
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 
 
-def train_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch,batch_num):
+def train_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch, batch_num):
     """
     A single training step
     """
@@ -57,8 +57,8 @@ def train_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch,batch_num):
         [train_op, global_step, deep.loss, deep.accuracy, deep.mae, deep.u_a, deep.i_a, deep.score],
         feed_dict)
     time_str = datetime.datetime.now().isoformat()
-    #print("{}: step {}, loss {:g}, rmse {:g},mae {:g}".format(time_str, batch_num, loss, accuracy, mae))
-    return accuracy, mae, u_a, i_a, fm
+    # print("{}: step {}, loss {:g}, rmse {:g},mae {:g}".format(time_str, batch_num, loss, accuracy, mae))
+    return accuracy, accuracy * accuracy, mae, u_a, i_a, fm
 
 
 def dev_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch, writer=None):
@@ -85,11 +85,12 @@ def dev_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch, writer=None):
 
     return [loss, accuracy, mae]
 
+
 if __name__ == '__main__':
     FLAGS = tf.flags.FLAGS
     FLAGS._parse_flags()
-    #import sys
-    #FLAGS(sys.argv)
+    # import sys
+    # FLAGS(sys.argv)
     print("\nParameters:")
     for attr, value in sorted(FLAGS.__flags.items()):
         print("{}={}".format(attr.upper(), value))
@@ -127,6 +128,7 @@ if __name__ == '__main__':
             log_device_placement=FLAGS.log_device_placement)
         session_conf.gpu_options.allow_growth = True
         sess = tf.Session(config=session_conf)
+
         with sess.as_default():
             deep = NARRE.NARRE(
                 review_num_u=review_num_u,
@@ -152,9 +154,8 @@ if __name__ == '__main__':
 
             # optimizer = tf.train.AdagradOptimizer(learning_rate=0.01, initial_accumulator_value=1e-8).minimize(deep.loss)
             optimizer = tf.train.AdamOptimizer(0.002, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(deep.loss)
-            
-            train_op = optimizer  # .apply_gradients(grads_and_vars, global_step=global_step)
 
+            train_op = optimizer  # .apply_gradients(grads_and_vars, global_step=global_step)
 
             sess.run(tf.initialize_all_variables())
 
@@ -220,8 +221,10 @@ if __name__ == '__main__':
             epoch = 1
             best_mae = 5
             best_rmse = 5
+            best_mse = 25
             train_mae = 0
             train_rmse = 0
+            train_mse = 0
 
             pkl_file = open(FLAGS.train_data, 'rb')
 
@@ -259,9 +262,11 @@ if __name__ == '__main__':
                     u_batch = np.array(u_batch)
                     i_batch = np.array(i_batch)
 
-                    t_rmse, t_mae, u_a, i_a, fm = train_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch,batch_num)
+                    t_rmse, t_mse, t_mae, u_a, i_a, fm = train_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch,
+                                                                    batch_num)
                     current_step = tf.train.global_step(sess, global_step)
                     train_rmse += t_rmse
+                    train_mse += t_mse
                     train_mae += t_mae
                     if batch_num % 500 == 0 and batch_num > 1:
                         print("\nEvaluation:")
@@ -291,21 +296,23 @@ if __name__ == '__main__':
                             loss_s = loss_s + len(u_valid) * loss
                             accuracy_s = accuracy_s + len(u_valid) * np.square(accuracy)
                             mae_s = mae_s + len(u_valid) * mae
-                        print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}".format(loss_s / test_length,
-                                                                                         np.sqrt(
-                                                                                             accuracy_s / test_length),
-                                                                                         mae_s / test_length))
+                        print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}, mse_valid {:g}".format(
+                            loss_s / test_length, np.sqrt(accuracy_s / test_length), mae_s / test_length,
+                            accuracy_s / test_length))
                         rmse = np.sqrt(accuracy_s / test_length)
+                        mse = accuracy_s / test_length
                         mae = mae_s / test_length
                         if best_rmse > rmse:
                             best_rmse = rmse
                         if best_mae > mae:
                             best_mae = mae
+                        if best_mse > mse:
+                            best_mse = mse
                         print("")
 
                 print str(epoch) + ':\n'
                 print("\nEvaluation:")
-                print "train:rmse,mae:", train_rmse / ll, train_mae / ll
+                print "train:rmse,mae,mse:", train_rmse / ll, train_mae / ll, train_mse / ll
                 u_a = np.reshape(u_a[0], (1, -1))
                 i_a = np.reshape(i_a[0], (1, -1))
 
@@ -339,13 +346,18 @@ if __name__ == '__main__':
                     mae_s = mae_s + len(u_valid) * mae
                 print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}".format(loss_s / test_length,
                                                                                  np.sqrt(accuracy_s / test_length),
-                                                                                 mae_s / test_length))
+                                                                                 mae_s / test_length,
+                                                                                 accuracy_s / test_length))
                 rmse = np.sqrt(accuracy_s / test_length)
+                mse = accuracy_s / test_length
                 mae = mae_s / test_length
                 if best_rmse > rmse:
                     best_rmse = rmse
                 if best_mae > mae:
                     best_mae = mae
+                if best_mse > mse:
+                    best_mse = mse
                 print("")
             print 'best rmse:', best_rmse
             print 'best mae:', best_mae
+            print 'best_mse:', best_mse
