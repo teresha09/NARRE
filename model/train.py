@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
             sess.run(tf.initialize_all_variables())
 
-            saver = tf.train.Saver()
+            saver = tf.train.Saver(max_to_keep=4)
 
             if FLAGS.word2vec:
                 # initial matrix with random uniform
@@ -353,6 +353,7 @@ if __name__ == '__main__':
                 mae = mae_s / test_length
                 if best_rmse > rmse:
                     best_rmse = rmse
+                    saver.save(sess, 'best_rmse')
                 if best_mae > mae:
                     best_mae = mae
                 if best_mse > mse:
