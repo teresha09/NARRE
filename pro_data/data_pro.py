@@ -70,7 +70,7 @@ def pad_sentences(u_text, u_len, u2_len, padding_word="<PAD/>"):
     return u_text2
 
 
-def pad_reviewid(u_train, u_valid, u_len, num):
+def pad_reviewid(u_train, u_valid, u_test, u_len, num):
     pad_u_train = []
 
     for i in range(len(u_train)):
@@ -89,7 +89,17 @@ def pad_reviewid(u_train, u_valid, u_len, num):
         if u_len < len(x):
             x = x[:u_len]
         pad_u_valid.append(x)
-    return pad_u_train, pad_u_valid
+
+    pad_u_test = []
+
+    for i in range(len(u_test)):
+        x = u_test[i]
+        while u_len > len(x):
+            x.append(num)
+        if u_len < len(x):
+            x = x[:u_len]
+        pad_u_test.append(x)
+    return pad_u_train, pad_u_valid, pad_u_test
 
 
 def build_vocab(sentences1, sentences2):
@@ -133,22 +143,22 @@ def build_input_data(u_text, i_text, vocabulary_u, vocabulary_i):
     return u_text2, i_text2
 
 
-def load_data(train_data, valid_data, user_review, item_review, user_rid, item_rid, stopwords):
+def load_data(train_data, valid_data, test_data,user_review, item_review, user_rid, item_rid, stopwords):
     """
     Loads and preprocessed data for the MR dataset.
     Returns input vectors, labels, vocabulary, and inverse vocabulary.
     """
     # Load and preprocess data
-    u_text, i_text, y_train, y_valid, u_len, i_len, u2_len, i2_len, uid_train, iid_train, uid_valid, iid_valid, user_num, item_num \
-        , reid_user_train, reid_item_train, reid_user_valid, reid_item_valid = \
-        load_data_and_labels(train_data, valid_data, user_review, item_review, user_rid, item_rid, stopwords)
+    u_text, i_text, y_train, y_valid, y_test, u_len, i_len, u2_len, i2_len, uid_train, iid_train, uid_valid, iid_valid,uid_test,iid_test, user_num, item_num \
+        , reid_user_train, reid_item_train, reid_user_valid, reid_item_valid,reid_user_test,reid_item_test = \
+        load_data_and_labels(train_data, valid_data, test_data, user_review, item_review, user_rid, item_rid, stopwords)
     print "load data done"
     u_text = pad_sentences(u_text, u_len, u2_len)
-    reid_user_train, reid_user_valid = pad_reviewid(reid_user_train, reid_user_valid, u_len, item_num + 1)
+    reid_user_train, reid_user_valid, reid_user_test = pad_reviewid(reid_user_train, reid_user_valid, reid_user_test, u_len, item_num + 1)
 
     print "pad user done"
     i_text = pad_sentences(i_text, i_len, i2_len)
-    reid_item_train, reid_item_valid = pad_reviewid(reid_item_train, reid_item_valid, i_len, user_num + 1)
+    reid_item_train, reid_item_valid, reid_item_test = pad_reviewid(reid_item_train, reid_item_valid, reid_item_test, i_len, user_num + 1)
 
     print "pad item done"
 
@@ -161,21 +171,25 @@ def load_data(train_data, valid_data, user_review, item_review, user_rid, item_r
     u_text, i_text = build_input_data(u_text, i_text, vocabulary_user, vocabulary_item)
     y_train = np.array(y_train)
     y_valid = np.array(y_valid)
+    y_test = np.array(y_test)
     uid_train = np.array(uid_train)
     uid_valid = np.array(uid_valid)
     iid_train = np.array(iid_train)
     iid_valid = np.array(iid_valid)
+    uid_test = np.array(uid_test)
+    iid_test = np.array(iid_test)
     reid_user_train = np.array(reid_user_train)
     reid_user_valid = np.array(reid_user_valid)
     reid_item_train = np.array(reid_item_train)
     reid_item_valid = np.array(reid_item_valid)
+    reid_user_test = np.array(reid_user_test)
+    reid_item_test = np.array(reid_item_test)
+    return [u_text, i_text, y_train, y_valid, y_test, vocabulary_user, vocabulary_inv_user, vocabulary_item,
+            vocabulary_inv_item, uid_train, iid_train, uid_valid, iid_valid, uid_test, iid_test, user_num, item_num, reid_user_train,
+            reid_item_train, reid_user_valid, reid_item_valid, reid_user_test, reid_item_test]
 
-    return [u_text, i_text, y_train, y_valid, vocabulary_user, vocabulary_inv_user, vocabulary_item,
-            vocabulary_inv_item, uid_train, iid_train, uid_valid, iid_valid, user_num, item_num, reid_user_train,
-            reid_item_train, reid_user_valid, reid_item_valid]
 
-
-def load_data_and_labels(train_data, valid_data, user_review, item_review, user_rid, item_rid, stopwords):
+def load_data_and_labels(train_data, valid_data, test_data, user_review, item_review, user_rid, item_rid, stopwords):
     """
     Loads MR polarity data from files, splits the data into words and generates labels.
     Returns split sentences and labels.
@@ -254,6 +268,35 @@ def load_data_and_labels(train_data, valid_data, user_review, item_review, user_
             reid_item_valid.append(i_rid[int(line[1])])
 
         y_valid.append(float(line[2]))
+
+
+    print "test"
+    reid_user_test = []
+    reid_item_test = []
+
+    uid_test = []
+    iid_test = []
+    y_test = []
+    f_test = open(test_data)
+    for line in f_test:
+        line = line.split(',')
+        uid_test.append(int(line[0]))
+        iid_test.append(int(line[1]))
+        if u_text.has_key(int(line[0])):
+            reid_user_test.append(u_rid[int(line[0])])
+        else:
+            u_text[int(line[0])] = [['<PAD/>']]
+            u_rid[int(line[0])] = [int(0)]
+            reid_user_test.append(u_rid[int(line[0])])
+
+        if i_text.has_key(int(line[1])):
+            reid_item_test.append(i_rid[int(line[1])])
+        else:
+            i_text[int(line[1])] = [['<PAD/>']]
+            i_rid[int(line[1])] = [int(0)]
+            reid_item_test.append(i_rid[int(line[1])])
+
+        y_test.append(float(line[2]))
     print "len"
 
 
@@ -278,9 +321,138 @@ def load_data_and_labels(train_data, valid_data, user_review, item_review, user_
     item_num = len(i_text)
     print "user_num:", user_num
     print "item_num:", item_num
-    return [u_text, i_text, y_train, y_valid, u_len, i_len, u2_len, i2_len, uid_train,
-            iid_train, uid_valid, iid_valid, user_num,
-            item_num, reid_user_train, reid_item_train, reid_user_valid, reid_item_valid]
+    return [u_text, i_text, y_train, y_valid, y_test, u_len, i_len, u2_len, i2_len, uid_train,
+            iid_train, uid_valid, iid_valid,uid_test,iid_test, user_num,
+            item_num, reid_user_train, reid_item_train, reid_user_valid, reid_item_valid,reid_user_test,reid_item_test]
+
+'''
+def load_data_test(test_data, user_review, item_review, user_rid, item_rid, stopwords):
+    """
+    Loads and preprocessed data for the MR dataset.
+    Returns input vectors, labels, vocabulary, and inverse vocabulary.
+    """
+    # Load and preprocess data
+    u_text, i_text, y_test, u_len, i_len, u2_len, i2_len, uid_test, iid_test, user_num, item_num \
+        , reid_user_test, reid_item_test = \
+        load_data_and_labels_test(test_data, user_review, item_review, user_rid, item_rid, stopwords)
+    print "load data done"
+    u_text = pad_sentences(u_text, u_len, u2_len)
+    reid_user_test = pad_reviewid(reid_user_test, u_len, item_num + 1)
+
+    print "pad user done"
+    i_text = pad_sentences(i_text, i_len, i2_len)
+    reid_item_test = pad_reviewid(reid_item_test, i_len, user_num + 1)
+
+    print "pad item done"
+
+    user_voc = [xx for x in u_text.itervalues() for xx in x]
+    item_voc = [xx for x in i_text.itervalues() for xx in x]
+
+    vocabulary_user, vocabulary_inv_user, vocabulary_item, vocabulary_inv_item = build_vocab(user_voc, item_voc)
+    print len(vocabulary_user)
+    print len(vocabulary_item)
+    u_text, i_text = build_input_data(u_text, i_text, vocabulary_user, vocabulary_item)
+    y_test = np.array(y_test)
+    uid_test = np.array(uid_test)
+    iid_test = np.array(iid_test)
+    reid_user_test = np.array(reid_user_test)
+    reid_item_test = np.array(reid_item_test)
+
+    return [u_text, i_text, y_test,vocabulary_user, vocabulary_inv_user, vocabulary_item,
+            vocabulary_inv_item, uid_test, iid_test, user_num, item_num, reid_user_test,
+            reid_item_test]
+
+
+def load_data_and_labels_test(test_data, user_review, item_review, user_rid, item_rid, stopwords):
+    """
+    Loads MR polarity data from files, splits the data into words and generates labels.
+    Returns split sentences and labels.
+    """
+    # Load data from files
+
+
+    f_test = open(test_data, "r")
+    f1 = open(user_review)
+    f2 = open(item_review)
+    f3 = open(user_rid)
+    f4 = open(item_rid)
+
+    user_reviews = pickle.load(f1)
+    item_reviews = pickle.load(f2)
+    user_rids = pickle.load(f3)
+    item_rids = pickle.load(f4)
+
+    reid_user_test = []
+    reid_item_test = []
+    uid_test = []
+    iid_test = []
+    y_test = []
+    u_text = {}
+    u_rid = {}
+    i_text = {}
+    i_rid = {}
+    i = 0
+    for line in f_test:
+        i = i + 1
+        line = line.split(',')
+        uid_test.append(int(line[0]))
+        iid_test.append(int(line[1]))
+        if u_text.has_key(int(line[0])):
+            reid_user_test.append(u_rid[int(line[0])])
+        else:
+            u_text[int(line[0])] = user_reviews[int(line[0])]
+            u_rid[int(line[0])] = []
+            for s in user_rids[int(line[0])]:
+                u_rid[int(line[0])].append(int(s))
+            reid_user_test.append(u_rid[int(line[0])])
+
+        if i_text.has_key(int(line[1])):
+            reid_item_test.append(i_rid[int(line[1])])  #####write here
+        else:
+            i_text[int(line[1])] = item_reviews[int(line[1])]
+            i_rid[int(line[1])] = []
+            for s in item_rids[int(line[1])]:
+                i_rid[int(line[1])].append(int(s))
+            reid_item_test.append(i_rid[int(line[1])])
+        y_test.append(float(line[2]))
+
+    review_num_u = np.array([len(x) for x in u_text.itervalues()])
+    x = np.sort(review_num_u)
+    u_len = x[int(0.9 * len(review_num_u)) - 1]
+    review_len_u = np.array([len(j) for i in u_text.itervalues() for j in i])
+    x2 = np.sort(review_len_u)
+    u2_len = x2[int(0.9 * len(review_len_u)) - 1]
+
+    review_num_i = np.array([len(x) for x in i_text.itervalues()])
+    y = np.sort(review_num_i)
+    i_len = y[int(0.9 * len(review_num_i)) - 1]
+    review_len_i = np.array([len(j) for i in i_text.itervalues() for j in i])
+    y2 = np.sort(review_len_i)
+    i2_len = y2[int(0.9 * len(review_len_i)) - 1]
+    print "u_len:", u_len
+    print "i_len:", i_len
+    print "u2_len:", u2_len
+    print "i2_len:", i2_len
+    user_num = len(u_text)
+    item_num = len(i_text)
+    print "user_num:", user_num
+    print "item_num:", item_num
+    return [u_text, i_text, y_test, u_len, i_len, u2_len, i2_len, uid_test,
+            iid_test,user_num,
+            item_num, reid_user_test, reid_item_test]
+
+
+def pad_reviewid_test(u_test, u_len, num):
+    pad_u_test = []
+    for i in range(len(u_test)):
+        x = u_test[i]
+        while u_len > len(x):
+            x.append(num)
+        if u_len < len(x):
+            x = x[:u_len]
+        pad_u_test.append(x)
+    return pad_u_test
+'''
 
 
 if __name__ == '__main__':
@@ -289,10 +461,14 @@ if __name__ == '__main__':
     import sys
     FLAGS._parse_flags()
 
-    u_text, i_text, y_train, y_valid, vocabulary_user, vocabulary_inv_user, vocabulary_item, \
-    vocabulary_inv_item, uid_train, iid_train, uid_valid, iid_valid, user_num, item_num, reid_user_train, reid_item_train, reid_user_valid, reid_item_valid = \
-        load_data(FLAGS.dir+FLAGS.train_data, FLAGS.dir+FLAGS.valid_data, FLAGS.dir+FLAGS.user_review, FLAGS.dir+FLAGS.item_review, FLAGS.dir+FLAGS.user_review_id,
-                  FLAGS.dir+FLAGS.item_review_id, FLAGS.dir+FLAGS.stopwords)
+    u_text, i_text, y_train, y_valid, y_test, vocabulary_user, vocabulary_inv_user, vocabulary_item, \
+    vocabulary_inv_item, uid_train, iid_train, uid_valid, iid_valid, uid_test, iid_test, user_num, item_num, reid_user_train, \
+    reid_item_train, reid_user_valid, reid_item_valid,\
+    reid_user_test, reid_item_test = load_data(FLAGS.dir+FLAGS.train_data,
+                                               FLAGS.dir+FLAGS.valid_data,FLAGS.dir+FLAGS.test_data, FLAGS.dir+FLAGS.user_review, FLAGS.dir+FLAGS.item_review,
+                                               FLAGS.dir+FLAGS.user_review_id,FLAGS.dir+FLAGS.item_review_id, FLAGS.dir+FLAGS.stopwords)
+
+
     TPS_DIR=FLAGS.dir
     np.random.seed(2017)
 
@@ -306,20 +482,27 @@ if __name__ == '__main__':
 
     y_train = y_train[:, np.newaxis]
     y_valid = y_valid[:, np.newaxis]
+    y_test = y_test[:, np.newaxis]
 
     userid_train = userid_train[:, np.newaxis]
     itemid_train = itemid_train[:, np.newaxis]
     userid_valid = uid_valid[:, np.newaxis]
     itemid_valid = iid_valid[:, np.newaxis]
+    userid_test = uid_test[:, np.newaxis]
+    itemid_test = iid_test[:, np.newaxis]
 
     batches_train = list(
         zip(userid_train, itemid_train, reid_user_train, reid_item_train, y_train))
-    batches_test = list(zip(userid_valid, itemid_valid, reid_user_valid, reid_item_valid, y_valid))
+    batches_valid = list(zip(userid_valid, itemid_valid, reid_user_valid, reid_item_valid, y_valid))
+    batches_test = list(zip(userid_test, itemid_test, reid_user_test, reid_item_test, y_test))
     print 'write begin'
     output = open(os.path.join(TPS_DIR, 'data.train'), 'wb')
     pickle.dump(batches_train, output)
+    output = open(os.path.join(TPS_DIR, 'data.valid'), 'wb')
+    pickle.dump(batches_valid, output)
     output = open(os.path.join(TPS_DIR, 'data.test'), 'wb')
     pickle.dump(batches_test, output)
+
 
     para = {}
     para['user_num'] = user_num
@@ -331,20 +514,12 @@ if __name__ == '__main__':
     para['user_vocab'] = vocabulary_user
     para['item_vocab'] = vocabulary_item
     para['train_length'] = len(y_train)
-    para['test_length'] = len(y_valid)
+    para['valid_length'] = len(y_valid)
+    para['test_length'] = len(y_test)
     para['u_text'] = u_text
     para['i_text'] = i_text
     output = open(os.path.join(TPS_DIR, 'data.para'), 'wb')
 
     # Pickle dictionary using protocol 0.
     pickle.dump(para, output)
-
-
-
-
-
-
-
-
-
 

@@ -17,7 +17,7 @@ import NARRE
 
 # tf.flags.DEFINE_string("dir","../data/music/", "Directory")
 tf.flags.DEFINE_string("word2vec", "../data/google.bin", "Word2vec file with pre-trained embeddings (default: None)")
-tf.flags.DEFINE_string("valid_data", "../data/music/data.test", " Data for validation")
+tf.flags.DEFINE_string("valid_data", "../data/music/data.valid", " Data for validation")
 tf.flags.DEFINE_string("para_data", "../data/music/data.para", "Data parameters")
 tf.flags.DEFINE_string("train_data", "../data/music/data.train", "Data for training")
 # ==================================================
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     vocabulary_user = para['user_vocab']
     vocabulary_item = para['item_vocab']
     train_length = para['train_length']
-    test_length = para['test_length']
+    test_length = para['valid_length']
     u_text = para['u_text']
     i_text = para['i_text']
 
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
             sess.run(tf.initialize_all_variables())
 
-            saver = tf.train.Saver(max_to_keep=4)
+            saver = tf.train.Saver(max_to_keep=1)
 
             if FLAGS.word2vec:
                 # initial matrix with random uniform
