@@ -344,7 +344,7 @@ if __name__ == '__main__':
                     loss_s = loss_s + len(u_valid) * loss
                     accuracy_s = accuracy_s + len(u_valid) * np.square(accuracy)
                     mae_s = mae_s + len(u_valid) * mae
-                print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}".format(loss_s / test_length,
+                print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}, mse_valid {:g}".format(loss_s / test_length,
                                                                                  np.sqrt(accuracy_s / test_length),
                                                                                  mae_s / test_length,
                                                                                  accuracy_s / test_length))
@@ -353,7 +353,7 @@ if __name__ == '__main__':
                 mae = mae_s / test_length
                 if best_rmse > rmse:
                     best_rmse = rmse
-                    saver.save(sess, 'best_rmse')
+                    saver.save(sess, './model')
                 if best_mae > mae:
                     best_mae = mae
                 if best_mse > mse:
