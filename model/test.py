@@ -199,7 +199,7 @@ if __name__ == '__main__':
             loss_s = loss_s + len(u_test) * loss
             accuracy_s = accuracy_s + len(u_test) * np.square(accuracy)
             mae_s = mae_s + len(u_test) * mae
-        print ("loss_test {:g}, rmse_test {:g}, mae_test {:g}".format(loss_s / test_length,
+        print ("loss_test {:g}, rmse_test {:g}, mae_test {:g}, mse {:g}".format(loss_s / test_length,
                                                                       np.sqrt(accuracy_s / test_length),
                                                                       mae_s / test_length,
                                                                       accuracy_s / test_length))
