@@ -4,10 +4,16 @@ import pickle
 import datetime
 import NARRE
 
+# tf.flags.DEFINE_string("dir","../data/music/", "Directory")
 tf.flags.DEFINE_string("word2vec", "../data/google.bin", "Word2vec file with pre-trained embeddings (default: None)")
-tf.flags.DEFINE_string("test_data", "../data/music/data.test", " Data for test")
+tf.flags.DEFINE_string("valid_data", "../data/music/data.test", " Data for validation")
+tf.flags.DEFINE_string("test_data", "../data/music/data.test", " Data for validation")
 tf.flags.DEFINE_string("para_data", "../data/music/data.para", "Data parameters")
+tf.flags.DEFINE_string("train_data", "../data/music/data.train", "Data for training")
+# ==================================================
 
+# Model Hyperparameters
+# tf.flags.DEFINE_string("word2vec", "./data/rt-polaritydata/google.bin", "Word2vec file with pre-trained embeddings (default: None)")
 tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding ")
 tf.flags.DEFINE_string("filter_sizes", "3", "Comma-separated filter sizes ")
 tf.flags.DEFINE_integer("num_filters", 100, "Number of filters per filter size")
@@ -21,9 +27,9 @@ tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device 
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 
 
-def test_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch, writer=None):
+def dev_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch, writer=None):
     """
-    Evaluates model on a test set
+    Evaluates model on a dev set
 
     """
     feed_dict = {
@@ -38,7 +44,8 @@ def test_step(u_batch, i_batch, uid, iid, reuid, reiid, y_batch, writer=None):
         deep.dropout_keep_prob: 1.0
     }
     step, loss, accuracy, mae = sess.run(
-        [global_step, deep.loss, deep.accuracy, deep.mae], feed_dict)
+        [global_step, deep.loss, deep.accuracy, deep.mae],
+        feed_dict)
     time_str = datetime.datetime.now().isoformat()
     # print("{}: step{}, loss {:g}, rmse {:g},mae {:g}".format(time_str, step, loss, accuracy, mae))
 
@@ -68,14 +75,23 @@ if __name__ == '__main__':
     vocabulary_user = para['user_vocab']
     vocabulary_item = para['item_vocab']
     train_length = para['train_length']
-    test_length = para['valid_length']
+    test_length = para['test_length']
     u_text = para['u_text']
     i_text = para['i_text']
 
     np.random.seed(2017)
     random_seed = 2017
+    print user_num
+    print item_num
+    print review_num_u
+    print review_len_u
+    print review_num_i
+    print review_len_i
     tf.reset_default_graph()
-    saver = tf.train.import_meta_graph("/home/egor/PycharmProjects/NARRE/model/model.meta")
+    saver = tf.train.import_meta_graph("model-0.meta")
+    for tensor in tf.get_default_graph().get_operations():
+        print (tensor.name)
+
     session_conf = tf.ConfigProto(
         allow_soft_placement=FLAGS.allow_soft_placement,
         log_device_placement=FLAGS.log_device_placement)
@@ -83,7 +99,6 @@ if __name__ == '__main__':
     sess = tf.Session(config=session_conf)
 
     with sess.as_default():
-        saver.restore(sess, './model')
         deep = NARRE.NARRE(
             review_num_u=review_num_u,
             review_num_i=review_num_i,
@@ -101,111 +116,94 @@ if __name__ == '__main__':
             l2_reg_lambda=FLAGS.l2_reg_lambda,
             attention_size=32,
             n_latent=32)
+        saver.restore(sess, tf.train.latest_checkpoint('./'))
+        iidW = sess.graph.get_tensor_by_name("iidW:0")
+        uidW = sess.graph.get_tensor_by_name("uidW:0")
+        W1 = sess.graph.get_tensor_by_name("user_embedding/W1:0")
+        W2 = sess.graph.get_tensor_by_name("item_embedding/W2:0")
+        W = sess.graph.get_tensor_by_name("user_conv-maxpool-3/W:0")
+        b = sess.graph.get_tensor_by_name("user_conv-maxpool-3/b:0")
+        w = sess.graph.get_tensor_by_name("item_conv-maxpool-3/W:0")
+        B = sess.graph.get_tensor_by_name("item_conv-maxpool-3/b:0")
+        Wau = sess.graph.get_tensor_by_name("attention/Wau:0")
+        Wru = sess.graph.get_tensor_by_name("attention/Wru:0")
+        Wpu = sess.graph.get_tensor_by_name("attention/Wpu:0")
+        bau = sess.graph.get_tensor_by_name("attention/bau:0")
+        bbu = sess.graph.get_tensor_by_name("attention/bbu:0")
+        Wai = sess.graph.get_tensor_by_name("attention/Wai:0")
+        Wri = sess.graph.get_tensor_by_name("attention/Wri:0")
+        Wpi = sess.graph.get_tensor_by_name("attention/Wpi:0")
+        bai = sess.graph.get_tensor_by_name("attention/bai:0")
+        bbi = sess.graph.get_tensor_by_name("attention/bbi:0")
+        iidmf = sess.graph.get_tensor_by_name("get_fea/iidmf:0")
+        uidmf = sess.graph.get_tensor_by_name("get_fea/uidmf:0")
+        Wu = sess.graph.get_tensor_by_name("get_fea/Wu:0")
+        bu = sess.graph.get_tensor_by_name("get_fea/bu:0")
+        Wi = sess.graph.get_tensor_by_name("get_fea/Wi:0")
+        bi = sess.graph.get_tensor_by_name("get_fea/bi:0")
+        Wmul = sess.graph.get_tensor_by_name("ncf/wmul:0")
+        uidW2 = sess.graph.get_tensor_by_name("ncf/uidW2:0")
+        iidW2 = sess.graph.get_tensor_by_name("ncf/iidW2:0")
+        bised = sess.graph.get_tensor_by_name("ncf/bias:0")
+        global_step = sess.graph.get_tensor_by_name('global_step:0')
+
         tf.set_random_seed(random_seed)
-        global_step = tf.Variable(sess.run('global_step:0'))
-        optimizer = tf.train.AdamOptimizer(0.002, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(deep.loss)
-        train_op = optimizer
+        print user_num
+        print item_num
 
         sess.run(tf.initialize_all_variables())
 
-        if FLAGS.word2vec:
-            # initial matrix with random uniform
-            u = 0
-            initW = np.random.uniform(-1.0, 1.0, (len(vocabulary_user), FLAGS.embedding_dim))
-            # load any vectors from the word2vec
-            print("Load word2vec u file {}\n".format(FLAGS.word2vec))
-            with open(FLAGS.word2vec, "rb") as f:
-                header = f.readline()
-                vocab_size, layer1_size = map(int, header.split())
-                binary_len = np.dtype('float32').itemsize * layer1_size
-                for line in xrange(vocab_size):
-                    word = []
-                    while True:
-                        ch = f.read(1)
-                        if ch == ' ':
-                            word = ''.join(word)
-                            break
-                        if ch != '\n':
-                            word.append(ch)
-                    idx = 0
-
-                    if word in vocabulary_user:
-                        u = u + 1
-                        idx = vocabulary_user[word]
-                        initW[idx] = np.fromstring(f.read(binary_len), dtype='float32')
-                    else:
-                        f.read(binary_len)
-            sess.run(deep.W1.assign(initW))
-            initW = np.random.uniform(-1.0, 1.0, (len(vocabulary_item), FLAGS.embedding_dim))
-            # load any vectors from the word2vec
-            print("Load word2vec i file {}\n".format(FLAGS.word2vec))
-
-            item = 0
-            with open(FLAGS.word2vec, "rb") as f:
-                header = f.readline()
-                vocab_size, layer1_size = map(int, header.split())
-                binary_len = np.dtype('float32').itemsize * layer1_size
-                for line in xrange(vocab_size):
-                    word = []
-                    while True:
-                        ch = f.read(1)
-                        if ch == ' ':
-                            word = ''.join(word)
-                            break
-                        if ch != '\n':
-                            word.append(ch)
-                    idx = 0
-                    if word in vocabulary_item:
-                        item = item + 1
-                        idx = vocabulary_item[word]
-                        initW[idx] = np.fromstring(f.read(binary_len), dtype='float32')
-                    else:
-                        f.read(binary_len)
-
-            sess.run(deep.W2.assign(initW))
-            print item
 
         best_mae = 5
         best_rmse = 5
         best_mse = 25
-        train_mae = 0
-        train_rmse = 0
-        train_mse = 0
 
         pkl_file = open(FLAGS.test_data, 'rb')
+
         test_data = pickle.load(pkl_file)
         test_data = np.array(test_data)
         pkl_file.close()
         data_size_test = len(test_data)
         batch_size = FLAGS.batch_size
+
         loss_s = 0
         accuracy_s = 0
         mae_s = 0
+
         ll_test = int(len(test_data) / batch_size) + 1
         for batch_num in range(ll_test):
             start_index = batch_num * batch_size
             end_index = min((batch_num + 1) * batch_size, data_size_test)
             data_test = test_data[start_index:end_index]
-            userid_test, itemid_test, reuid, reiid, y_test = zip(*data_test)
-            u_test = []
-            i_test = []
-            for i in range(len(userid_test)):
-                u_test.append(u_text[userid_test[i][0]])
-                i_test.append(i_text[itemid_test[i][0]])
-            u_test = np.array(u_test)
-            i_test = np.array(i_test)
-            loss, accuracy, mae = test_step(u_test, i_test, userid_test, itemid_test, reuid, reiid,
-                                            y_test)
-            loss_s = loss_s + len(u_test) * loss
-            accuracy_s = accuracy_s + len(u_test) * np.square(accuracy)
-            mae_s = mae_s + len(u_test) * mae
-        print ("loss_test {:g}, rmse_test {:g}, mae_test {:g}, mse {:g}".format(loss_s / test_length,
-                                                                      np.sqrt(accuracy_s / test_length),
-                                                                      mae_s / test_length,
-                                                                      accuracy_s / test_length))
+
+            userid_valid, itemid_valid, reuid, reiid, y_valid = zip(*data_test)
+            u_valid = []
+            i_valid = []
+            for i in range(len(userid_valid)):
+                u_valid.append(u_text[userid_valid[i][0]])
+                i_valid.append(i_text[itemid_valid[i][0]])
+            u_valid = np.array(u_valid)
+            i_valid = np.array(i_valid)
+
+            loss, accuracy, mae = dev_step(u_valid, i_valid, userid_valid, itemid_valid, reuid, reiid, y_valid)
+            loss_s = loss_s + len(u_valid) * loss
+            accuracy_s = accuracy_s + len(u_valid) * np.square(accuracy)
+            mae_s = mae_s + len(u_valid) * mae
+        print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}, mse_valid {:g}".format(loss_s / test_length,
+                                                                                         np.sqrt(
+                                                                                             accuracy_s / test_length),
+                                                                                         mae_s / test_length,
+                                                                                         accuracy_s / test_length))
         rmse = np.sqrt(accuracy_s / test_length)
         mse = accuracy_s / test_length
         mae = mae_s / test_length
-        print 'rmse:', rmse
-        print 'mae:', mae
-        print 'mse:', mse
+        if best_rmse > rmse:
+            best_rmse = rmse
+        if best_mae > mae:
+            best_mae = mae
+        if best_mse > mse:
+            best_mse = mse
+        print ""
+        print best_rmse
+        print best_mae
+        print best_mse

@@ -152,14 +152,16 @@ if __name__ == '__main__':
             print item_num
             global_step = tf.Variable(0, name="global_step", trainable=False)
 
+
             # optimizer = tf.train.AdagradOptimizer(learning_rate=0.01, initial_accumulator_value=1e-8).minimize(deep.loss)
             optimizer = tf.train.AdamOptimizer(0.002, beta1=0.9, beta2=0.999, epsilon=1e-8).minimize(deep.loss)
 
             train_op = optimizer  # .apply_gradients(grads_and_vars, global_step=global_step)
 
+
+
             sess.run(tf.initialize_all_variables())
 
-            saver = tf.train.Saver(max_to_keep=1)
 
             if FLAGS.word2vec:
                 # initial matrix with random uniform
@@ -217,6 +219,7 @@ if __name__ == '__main__':
 
                 sess.run(deep.W2.assign(initW))
                 print item
+            saver = tf.train.Saver(max_to_keep=1)
 
             epoch = 1
             best_mae = 5
@@ -353,7 +356,7 @@ if __name__ == '__main__':
                 mae = mae_s / test_length
                 if best_rmse > rmse:
                     best_rmse = rmse
-                    saver.save(sess, './model')
+                    saver.save(sess, './model', global_step=global_step)
                 if best_mae > mae:
                     best_mae = mae
                 if best_mse > mse:
