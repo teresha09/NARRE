@@ -20,6 +20,8 @@ tf.flags.DEFINE_string("word2vec", "../data/google.bin", "Word2vec file with pre
 tf.flags.DEFINE_string("valid_data", "../data/music/data.valid", " Data for validation")
 tf.flags.DEFINE_string("para_data", "../data/music/data.para", "Data parameters")
 tf.flags.DEFINE_string("train_data", "../data/music/data.train", "Data for training")
+tf.flags.DEFINE_string("test_data", "../data/music/data.test", " Data for testing")
+tf.flags.DEFINE_string("model_path", "../model", "Model path")
 # ==================================================
 
 # Model Hyperparameters
@@ -109,7 +111,8 @@ if __name__ == '__main__':
     vocabulary_user = para['user_vocab']
     vocabulary_item = para['item_vocab']
     train_length = para['train_length']
-    test_length = para['valid_length']
+    valid_length = para['valid_length']
+    test_length = para['test_length']
     u_text = para['u_text']
     i_text = para['i_text']
 
@@ -219,7 +222,8 @@ if __name__ == '__main__':
 
                 sess.run(deep.W2.assign(initW))
                 print item
-            saver = tf.train.Saver(max_to_keep=1)
+
+            saver = tf.train.Saver()
 
             epoch = 1
             best_mae = 5
@@ -228,25 +232,35 @@ if __name__ == '__main__':
             train_mae = 0
             train_rmse = 0
             train_mse = 0
+            best_rmse_valid = 100
+            best_mse_valid = 10000
+            best_mae_valid = 100
+
+            valid_rmse_scores, valid_mae_scores, valid_mse_scores = [], [], []
+            test_rmse_scores, test_mae_scores, test_mse_scores = [], [], []
 
             pkl_file = open(FLAGS.train_data, 'rb')
-
             train_data = pickle.load(pkl_file)
-
             train_data = np.array(train_data)
             pkl_file.close()
 
             pkl_file = open(FLAGS.valid_data, 'rb')
+            valid_data = pickle.load(pkl_file)
+            valid_data = np.array(valid_data)
+            pkl_file.close()
 
+            pkl_file = open(FLAGS.test_data, 'rb')
             test_data = pickle.load(pkl_file)
             test_data = np.array(test_data)
             pkl_file.close()
 
             data_size_train = len(train_data)
+            data_size_valid = len(valid_data)
             data_size_test = len(test_data)
             batch_size = FLAGS.batch_size
+
             ll = int(len(train_data) / batch_size)
-            for epoch in range(40):
+            for epoch in range(FLAGS.num_epochs):
                 # Shuffle the data at each epoch
                 shuffle_indices = np.random.permutation(np.arange(data_size_train))
                 shuffled_data = train_data[shuffle_indices]
@@ -279,13 +293,13 @@ if __name__ == '__main__':
                         accuracy_s = 0
                         mae_s = 0
 
-                        ll_test = int(len(test_data) / batch_size) + 1
-                        for batch_num in range(ll_test):
+                        ll_valid = int(len(valid_data) / batch_size) + 1
+                        for batch_num in range(ll_valid):
                             start_index = batch_num * batch_size
-                            end_index = min((batch_num + 1) * batch_size, data_size_test)
-                            data_test = test_data[start_index:end_index]
+                            end_index = min((batch_num + 1) * batch_size, data_size_valid)
+                            data_valid = valid_data[start_index:end_index]
 
-                            userid_valid, itemid_valid, reuid, reiid, y_valid = zip(*data_test)
+                            userid_valid, itemid_valid, reuid, reiid, y_valid = zip(*data_valid)
                             u_valid = []
                             i_valid = []
                             for i in range(len(userid_valid)):
@@ -300,11 +314,11 @@ if __name__ == '__main__':
                             accuracy_s = accuracy_s + len(u_valid) * np.square(accuracy)
                             mae_s = mae_s + len(u_valid) * mae
                         print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}, mse_valid {:g}".format(
-                            loss_s / test_length, np.sqrt(accuracy_s / test_length), mae_s / test_length,
-                            accuracy_s / test_length))
-                        rmse = np.sqrt(accuracy_s / test_length)
-                        mse = accuracy_s / test_length
-                        mae = mae_s / test_length
+                            loss_s / valid_length, np.sqrt(accuracy_s / valid_length), mae_s / valid_length,
+                            accuracy_s / valid_length))
+                        rmse = np.sqrt(accuracy_s / valid_length)
+                        mse = accuracy_s / valid_length
+                        mae = mae_s / valid_length
                         if best_rmse > rmse:
                             best_rmse = rmse
                         if best_mae > mae:
@@ -323,18 +337,19 @@ if __name__ == '__main__':
                 print i_a
                 train_rmse = 0
                 train_mae = 0
+                train_mse = 0
 
                 loss_s = 0
-                accuracy_s = 0
-                mae_s = 0
+                accuracy_s_valid = 0
+                mae_s_valid = 0
 
-                ll_test = int(len(test_data) / batch_size) + 1
-                for batch_num in range(ll_test):
+                ll_valid = int(len(valid_data) / batch_size) + 1
+                for batch_num in range(ll_valid):
                     start_index = batch_num * batch_size
-                    end_index = min((batch_num + 1) * batch_size, data_size_test)
-                    data_test = test_data[start_index:end_index]
+                    end_index = min((batch_num + 1) * batch_size, data_size_valid)
+                    data_valid = valid_data[start_index:end_index]
 
-                    userid_valid, itemid_valid, reuid, reiid, y_valid = zip(*data_test)
+                    userid_valid, itemid_valid, reuid, reiid, y_valid = zip(*data_valid)
                     u_valid = []
                     i_valid = []
                     for i in range(len(userid_valid)):
@@ -345,23 +360,108 @@ if __name__ == '__main__':
 
                     loss, accuracy, mae = dev_step(u_valid, i_valid, userid_valid, itemid_valid, reuid, reiid, y_valid)
                     loss_s = loss_s + len(u_valid) * loss
-                    accuracy_s = accuracy_s + len(u_valid) * np.square(accuracy)
-                    mae_s = mae_s + len(u_valid) * mae
-                print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}, mse_valid {:g}".format(loss_s / test_length,
-                                                                                 np.sqrt(accuracy_s / test_length),
-                                                                                 mae_s / test_length,
-                                                                                 accuracy_s / test_length))
-                rmse = np.sqrt(accuracy_s / test_length)
-                mse = accuracy_s / test_length
-                mae = mae_s / test_length
-                if best_rmse > rmse:
-                    best_rmse = rmse
-                    saver.save(sess, './model', global_step=global_step)
-                if best_mae > mae:
-                    best_mae = mae
-                if best_mse > mse:
-                    best_mse = mse
-                print("")
-            print 'best rmse:', best_rmse
-            print 'best mae:', best_mae
-            print 'best_mse:', best_mse
+                    accuracy_s_valid = accuracy_s_valid + len(u_valid) * np.square(accuracy)
+                    mae_s_valid = mae_s_valid + len(u_valid) * mae
+                print ("loss_valid {:g}, rmse_valid {:g}, mae_valid {:g}, mse_valid {:g}".format(loss_s / valid_length,
+                                                                                 np.sqrt(accuracy_s_valid / valid_length),
+                                                                                 mae_s_valid / valid_length,
+                                                                                 accuracy_s_valid / valid_length))
+                rmse_valid = np.sqrt(accuracy_s_valid / valid_length)
+                mse_valid = accuracy_s_valid / valid_length
+                mae_s_valid = mae_s_valid / valid_length
+                if best_rmse_valid > rmse_valid:
+                    best_rmse_valid = rmse_valid
+                    save_path = saver.save(sess, "%s/model_%s.ckpt" % (FLAGS.model_path, str(epoch)))
+                    best_epoch = epoch
+                if best_mae_valid > mae_s_valid:
+                    best_mae_valid = mae_s_valid
+                if best_mse_valid > mse_valid:
+                    best_mse_valid = mse_valid
+
+                loss_s = 0
+                accuracy_s_test = 0
+                mae_s_test = 0
+
+                ll_test = int(len(test_data) / batch_size) + 1
+                for batch_num in range(ll_test):
+                    start_index = batch_num * batch_size
+                    end_index = min((batch_num + 1) * batch_size, data_size_test)
+                    data_test = test_data[start_index:end_index]
+
+                    userid_test, itemid_test, reuid, reiid, y_test = zip(*data_test)
+
+                    # print("REUID test", reuid[0].shape)
+                    u_test = []
+                    i_test = []
+                    for i in range(len(userid_test)):
+                        u_test.append(u_text[userid_test[i][0]])
+                        i_test.append(i_text[itemid_test[i][0]])
+                    u_test = np.array(u_test)
+                    i_test = np.array(i_test)
+
+                    loss, accuracy, mae = dev_step(u_test, i_test, userid_test, itemid_test, reuid, reiid,
+                                                         y_test)
+                    loss_s += len(u_test) * loss
+                    accuracy_s_test += len(u_test) * np.square(accuracy)
+                    mae_s_test += len(u_test) * mae
+                print ("loss_test {:g}, rmse_test {:g}, mae_test {:g}, mse_test {:g}".format(loss_s / test_length,
+                                                                                    np.sqrt(
+                                                                                        accuracy_s_test / test_length),
+                                                                                    mae_s_test / test_length,
+                                                                                             accuracy_s_test / test_length))
+
+                valid_rmse = np.sqrt(accuracy_s_valid / valid_length)
+                valid_mae = mae_s_valid / valid_length
+                valid_mse = accuracy_s_valid / valid_length
+
+                test_rmse = np.sqrt(accuracy_s_test / test_length)
+                test_mae = mae_s_test / test_length
+                test_mse = accuracy_s_test / test_length
+
+                valid_rmse_scores.append(valid_rmse)
+                valid_mae_scores.append(valid_mae)
+                valid_mse_scores.append(valid_mse)
+
+                test_rmse_scores.append(test_rmse)
+                test_mae_scores.append(test_mae)
+                test_mse_scores.append(test_mse)
+
+            index = valid_rmse_scores.index(min(valid_rmse_scores))
+
+            print "Best valid: RMSE {:g}, MAE {:g}, MSE {:g}".format(valid_rmse_scores[index], valid_mae_scores[index],
+                                                           valid_mse_scores[index])
+
+            saver.restore(sess, "%s/model_%s.ckpt" % (FLAGS.model_path, str(index)))
+
+            y_true = []
+            y_pred = []
+            loss_s = 0
+            accuracy_s_test = 0
+            mae_s_test = 0
+
+            ll_test = int(len(test_data) / batch_size) + 1
+            for batch_num in range(ll_test):
+                start_index = batch_num * batch_size
+                end_index = min((batch_num + 1) * batch_size, data_size_test)
+                data_test = test_data[start_index:end_index]
+
+                userid_test, itemid_test, reuid, reiid, y_test = zip(*data_test)
+                u_test = []
+                i_test = []
+                for i in range(len(userid_test)):
+                    u_test.append(u_text[userid_test[i][0]])
+                    i_test.append(i_text[itemid_test[i][0]])
+                u_test = np.array(u_test)
+                i_test = np.array(i_test)
+                loss, accuracy, mae = dev_step(u_test, i_test, userid_test, itemid_test, reuid, reiid, y_test)
+                loss_s += len(u_test) * loss
+                accuracy_s_test += len(u_test) * np.square(accuracy)
+                mae_s_test += len(u_test) * mae
+            print ("loss_test {:g}, rmse_test {:g}, mae_test {:g}, mse_test {:g}".format(loss_s / test_length,
+                                                                                             np.sqrt(
+                                                                                                 accuracy_s_test / test_length),
+                                                                                             mae_s_test / test_length,
+                                                                                             accuracy_s_test / test_length))
+
+
+

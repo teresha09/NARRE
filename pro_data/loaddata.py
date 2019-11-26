@@ -27,10 +27,10 @@ TP_file=args.train_path
 TP_file_test=args.test_path
 TP_file_valid=args.valid_path
 
-#TPS_DIR = '../data/music'
-#TP_file = os.path.join(TPS_DIR, 'amazon_instant_video_train.json')
-#TP_file_test = os.path.join(TPS_DIR, 'amazon_instant_video_test.json' )
-#TP_file_valid = os.path.join(TPS_DIR, 'amazon_instant_video_dev.json')
+# TPS_DIR = '../data/music'
+# TP_file = os.path.join(TPS_DIR, 'amazon_instant_video_train.json')
+# TP_file_test = os.path.join(TPS_DIR, 'amazon_instant_video_test.json' )
+# TP_file_valid = os.path.join(TPS_DIR, 'amazon_instant_video_dev.json')
 
 f = open(TP_file)
 f_test = open(TP_file_test)
@@ -148,6 +148,19 @@ for i in data_train.values:
 
 
 for i in data_test.values:
+    if user_reviews.has_key(i[0]):
+        l=1
+    else:
+        user_rid[i[0]]=[0]
+        user_reviews[i[0]]=['0']
+    if item_reviews.has_key(i[1]):
+        l=1
+    else:
+        item_reviews[i[1]] = [0]
+        item_rid[i[1]]=['0']
+
+
+for i in data_valid.values:
     if user_reviews.has_key(i[0]):
         l=1
     else:
